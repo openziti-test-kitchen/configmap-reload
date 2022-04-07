@@ -16,13 +16,13 @@ SHELL := /bin/bash -euo pipefail
 
 # Use the native vendor/ dependency system
 export GO111MODULE := on
-export CGO_ENABLED := 0
+export CGO_ENABLED := 1
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
-ORG := github.com/jimmidyson
-REPOPATH ?= $(ORG)/configmap-reload
-DOCKER_IMAGE_NAME ?= jimmidyson/configmap-reload
+ORG := github.com/openziti-test-kitchen
+REPOPATH ?= $(ORG)/configmap-reloadz
+DOCKER_IMAGE_NAME ?= openziti/configmap-reloadz
 DOCKER_IMAGE_TAG ?= latest
 
 LDFLAGS := -s -w -extldflags '-static'

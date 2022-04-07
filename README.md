@@ -17,11 +17,9 @@ It is available as a Docker image at https://hub.docker.com/r/openziti/configmap
 
 ### Rebuilding the Docker Image
 
-First build the project and put the output into `linux-build` (specified in Dockerfile)
+First build the project by running `make docker`
 
-To update the container issue: `docker build . -t openziti/configmap-reloadz`
-
-Once built, push the container to docker hub: `docker push openziti/configmap-reloadz`
+Once built, push the container to docker hub: `docker push openziti/configmap-reloadz:latest-amd64`
 
 ### Usage
 
