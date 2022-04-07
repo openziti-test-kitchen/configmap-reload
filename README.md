@@ -1,17 +1,27 @@
-# Kubernetes ConfigMap Reload
+# Kubernetes ConfigMap Reload - Zitified
 
-[![license](https://img.shields.io/github/license/jimmidyson/configmap-reload.svg?maxAge=2592000)](https://github.com/jimmidyson/configmap-reload)
-[![Docker Stars](https://img.shields.io/docker/stars/jimmidyson/configmap-reload.svg?maxAge=2592000)](https://hub.docker.com/r/jimmidyson/configmap-reload/)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jimmidyson/configmap-reload.svg?maxAge=2592000)](https://hub.docker.com/r/jimmidyson/configmap-reload/)
-[![Dependency Status](https://dependencyci.com/github/jimmidyson/configmap-reload/badge)](https://dependencyci.com/github/jimmidyson/configmap-reload)
-[![CircleCI](https://img.shields.io/circleci/project/jimmidyson/configmap-reload.svg?maxAge=2592000)](https://circleci.com/gh/jimmidyson/configmap-reload)
+Forked from the excellent repository over at https://github.com/jimmidyson/configmap-reload. This is a "zitified" 
+version of that program. The main difference is that this program will require the container to have a ziti identity 
+located at /run/secrets/ziti.identity.json which will be used to provoke the target to reload. The target is 
+specified by supplying the "webhook-url" using a format that follows this convention:
 
+    https://serivceNameHere:portDoesNotMatter
+
+## About
 **configmap-reload** is a simple binary to trigger a reload when Kubernetes ConfigMaps are updated.
 It watches mounted volume dirs and notifies the target process that the config map has been changed.
 It currently only supports sending an HTTP request, but in future it is expected to support sending OS
 (e.g. SIGHUP) once Kubernetes supports pod PID namespaces.
 
-It is available as a Docker image at https://hub.docker.com/r/jimmidyson/configmap-reload
+It is available as a Docker image at https://hub.docker.com/r/openziti/configmap-reloadz
+
+### Rebuilding the Docker Image
+
+First build the project and put the output into `linux-build` (specified in Dockerfile)
+
+To update the container issue: `docker build . -t openziti/configmap-reloadz`
+
+Once built, push the container to docker hub: `docker push openziti/configmap-reloadz`
 
 ### Usage
 

@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/sirupsen/logrus"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	fsnotify "github.com/fsnotify/fsnotify"
@@ -87,6 +93,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	var zitiContext ziti.Context
+	cfg, err := config.NewFromFile("/run/secrets/ziti.identity.json")
+	if err != nil {
+		panic(err)
+	}
+	zitiContext = ziti.NewContextWithConfig(cfg)
+	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
+	zitiTransport.DialContext = func(_ context.Context, _ string, addr string) (net.Conn, error) {
+		service := strings.Split(addr, ":")[0] // expected to be passed as host:port
+		logrus.Info("dialing service %s", service)
+		dialOpts := &ziti.DialOptions{
+			ConnectTimeout: 5000,
+			AppData:        nil,
+		}
+		return zitiContext.DialWithOptions(service, dialOpts)
+	}
+	httpClient := http.Client{Transport: zitiTransport}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -120,7 +144,7 @@ func main() {
 
 					for retries := *webhookRetries; retries != 0; retries-- {
 						log.Printf("performing webhook request (%d/%d)", retries, *webhookRetries)
-						resp, err := http.DefaultClient.Do(req)
+						resp, err := httpClient.Do(req)
 						if err != nil {
 							setFailureMetrics(h.String(), "client_request_do")
 							log.Println("error:", err)
