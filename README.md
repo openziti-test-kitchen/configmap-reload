@@ -1,11 +1,16 @@
 # Kubernetes ConfigMap Reload - Zitified
 
 Forked from the excellent repository over at https://github.com/jimmidyson/configmap-reload. This is a "zitified" 
-version of that program. The main difference is that this program will require the container to have a ziti identity 
-located at /run/secrets/ziti.identity.json which will be used to provoke the target to reload. The target is 
-specified by supplying the "webhook-url" using a format that follows this convention:
+version of that program. The main difference is that this program will require the container to have access to an 
+zero trust overlay network provided by OpenZiti.
 
-    https://serivceNameHere:portDoesNotMatter
+To run the container you can override the following defaulted values:
+
+    --ziti.identity.file    = /run/secrets/ziti.identity.json [*REQUIRED*]
+    --ziti.service          = configmap-reload
+    --ziti.target.identity  = <empty>
+
+This information will be used to dial the provided ziti service either by service name or by specific identity. 
 
 ## About
 **configmap-reload** is a simple binary to trigger a reload when Kubernetes ConfigMaps are updated.

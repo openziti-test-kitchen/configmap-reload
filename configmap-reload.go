@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	fsnotify "github.com/fsnotify/fsnotify"
@@ -32,6 +31,9 @@ var (
 	webhookRetries    = flag.Int("webhook-retries", 1, "the amount of times to retry the webhook reload request")
 	listenAddress     = flag.String("web.listen-address", ":9533", "Address to listen on for web interface and telemetry.")
 	metricPath        = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	zitiIdentityFile  = flag.String("ziti.identity.file", "/run/secrets/ziti.identity.json", "the path to the ziti identity to use")
+	zitiService       = flag.String("ziti.service", "configmap-reload", "the path to the ziti identity to use")
+	zitiTarget        = flag.String("ziti.target.identity", "", "the name of the ziti identity to dial")
 
 	lastReloadError = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
@@ -94,20 +96,24 @@ func main() {
 	}
 
 	var zitiContext ziti.Context
-	cfg, err := config.NewFromFile("/run/secrets/ziti.identity.json")
+	logrus.Infof("creating ziti context using file at: %s", *zitiIdentityFile)
+	cfg, err := config.NewFromFile(*zitiIdentityFile)
 	if err != nil {
 		panic(err)
 	}
 	zitiContext = ziti.NewContextWithConfig(cfg)
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
 	zitiTransport.DialContext = func(_ context.Context, _ string, addr string) (net.Conn, error) {
-		service := strings.Split(addr, ":")[0] // expected to be passed as host:port
-		logrus.Info("dialing service %s", service)
+		logrus.Infof("dialing service: %s", zitiService)
 		dialOpts := &ziti.DialOptions{
-			ConnectTimeout: 5000,
+			ConnectTimeout: 5000 * time.Second,
 			AppData:        nil,
 		}
-		return zitiContext.DialWithOptions(service, dialOpts)
+		if zitiTarget != nil && *zitiTarget != "" {
+			logrus.Infof("using target identity: %s", *zitiTarget)
+			dialOpts.Identity = *zitiTarget
+		}
+		return zitiContext.DialWithOptions(*zitiService, dialOpts)
 	}
 	httpClient := http.Client{Transport: zitiTransport}
 
@@ -121,6 +127,7 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
+				//used for debugging to trigger the case... case <-time.After(5 * time.Second):
 				if !isValidEvent(event) {
 					continue
 				}
