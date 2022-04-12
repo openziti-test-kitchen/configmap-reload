@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/sirupsen/logrus"
 	"log"
 	"net"
 	"net/http"
@@ -96,7 +95,7 @@ func main() {
 	}
 
 	var zitiContext ziti.Context
-	logrus.Infof("creating ziti context using file at: %s", *zitiIdentityFile)
+	log.Println("creating ziti context using file at: ", *zitiIdentityFile)
 	cfg, err := config.NewFromFile(*zitiIdentityFile)
 	if err != nil {
 		panic(err)
@@ -104,13 +103,13 @@ func main() {
 	zitiContext = ziti.NewContextWithConfig(cfg)
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
 	zitiTransport.DialContext = func(_ context.Context, _ string, addr string) (net.Conn, error) {
-		logrus.Infof("dialing service: %s", zitiService)
+		log.Println("dialing service: ", zitiService)
 		dialOpts := &ziti.DialOptions{
 			ConnectTimeout: 5000 * time.Second,
 			AppData:        nil,
 		}
 		if zitiTarget != nil && *zitiTarget != "" {
-			logrus.Infof("using target identity: %s", *zitiTarget)
+			log.Println("using target identity: ", *zitiTarget)
 			dialOpts.Identity = *zitiTarget
 		}
 		return zitiContext.DialWithOptions(*zitiService, dialOpts)
