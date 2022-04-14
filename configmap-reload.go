@@ -94,27 +94,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	var zitiContext ziti.Context
-	log.Println("creating ziti context using file at: ", *zitiIdentityFile)
-	cfg, err := config.NewFromFile(*zitiIdentityFile)
-	if err != nil {
-		panic(err)
-	}
-	zitiContext = ziti.NewContextWithConfig(cfg)
-	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
-	zitiTransport.DialContext = func(_ context.Context, _ string, addr string) (net.Conn, error) {
-		log.Println("dialing service: ", zitiService)
-		dialOpts := &ziti.DialOptions{
-			ConnectTimeout: 5000 * time.Second,
-			AppData:        nil,
+	httpClient := http.DefaultClient
+
+	if _, err := os.Stat("/path/to/whatever"); err == nil {
+		var zitiContext ziti.Context
+		log.Println("creating ziti context using file at: ", *zitiIdentityFile)
+		cfg, err := config.NewFromFile(*zitiIdentityFile)
+		if err == nil {
+			log.Println("ziti identity file found. using ziti transport")
+			zitiContext = ziti.NewContextWithConfig(cfg)
+			zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
+			zitiTransport.DialContext = func(_ context.Context, _ string, addr string) (net.Conn, error) {
+				log.Println("dialing service: ", zitiService)
+				dialOpts := &ziti.DialOptions{
+					ConnectTimeout: 5000 * time.Second,
+					AppData:        nil,
+				}
+				if zitiTarget != nil && *zitiTarget != "" {
+					log.Println("using target identity: ", *zitiTarget)
+					dialOpts.Identity = *zitiTarget
+				}
+				return zitiContext.DialWithOptions(*zitiService, dialOpts)
+			}
+			httpClient = &http.Client{Transport: zitiTransport}
 		}
-		if zitiTarget != nil && *zitiTarget != "" {
-			log.Println("using target identity: ", *zitiTarget)
-			dialOpts.Identity = *zitiTarget
-		}
-		return zitiContext.DialWithOptions(*zitiService, dialOpts)
 	}
-	httpClient := http.Client{Transport: zitiTransport}
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -126,7 +130,8 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				//used for debugging to trigger the case... case <-time.After(5 * time.Second):
+				//used for debugging to trigger the case...
+				//case <-time.After(5 * time.Second):
 				if !isValidEvent(event) {
 					continue
 				}
@@ -149,7 +154,7 @@ func main() {
 					successfulReloadWebhook := false
 
 					for retries := *webhookRetries; retries != 0; retries-- {
-						log.Printf("performing webhook request (%d/%d)", retries, *webhookRetries)
+						log.Printf("performing webhook request (%d/%d/%s)", retries, *webhookRetries, req.URL)
 						resp, err := httpClient.Do(req)
 						if err != nil {
 							setFailureMetrics(h.String(), "client_request_do")
